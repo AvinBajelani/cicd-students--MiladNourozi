@@ -1,0 +1,27 @@
+run_tests:
+  before_script:
+    - echo "preparing test data and environment"
+    - export TEST_ENV=testing
+    - echo $TEST_ENV
+    - ls -lh
+    - sleep 5
+  script:
+    - echo "running tests in $TEST_ENV environment"
+    - sleep 10
+    - echo "tests completed successfully"
+  after_script:
+    - echo "cleaning up test environment"
+    - unset TEST_ENV
+    - echo "cleanup completed"
+
+build_app:
+  script:
+    - echo "building the application"
+    - sleep 10
+    - echo "build completed successfully"
+
+deploy_app:
+  script:
+    - echo "deploying the application"
+    - sleep 10
+    - echo "deployment completed successfully"
