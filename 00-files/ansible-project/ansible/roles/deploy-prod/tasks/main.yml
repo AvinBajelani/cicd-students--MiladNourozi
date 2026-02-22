@@ -1,0 +1,38 @@
+- name: Set timezone to UTC
+  timezone:
+    name: Etc/UTC
+  
+- name: Set hostname
+  command: hostnamectl set-hostname {{ inventory_hostname }}
+
+- name: Add hostname to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: "127.0.1.1 {{ inventory_hostname }} localhost"
+
+- name: Add hostname to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1'
+    line: "127.0.0.1 {{ inventory_hostname }} localhost"
+
+- name: Install necessary packages
+  apt:
+    name:
+      - vim
+      - git
+      - wget
+      - curl
+      - nginx
+      - ansible-core
+    state: present
+    update_cache: true
+
+- name: Create Directory for project
+  file:
+    path: /opt/porject-prod
+    state: directory
+
+
+

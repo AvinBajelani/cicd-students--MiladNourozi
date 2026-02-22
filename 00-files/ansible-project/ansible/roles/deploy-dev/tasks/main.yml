@@ -1,0 +1,55 @@
+- name: Set timezone to UTC
+  timezone:
+    name: Etc/UTC
+  
+- name: Set hostname
+  command: hostnamectl set-hostname {{ inventory_hostname }}
+
+- name: Add hostname to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: "127.0.1.1 {{ inventory_hostname }} localhost"
+
+- name: Add hostname to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1'
+    line: "127.0.0.1 {{ inventory_hostname }} localhost"
+
+- name: Install necessary packages
+  apt:
+    name:
+      - vim
+      - git
+      - wget
+      - curl
+      - nginx
+      - ansible-core
+    state: present
+    update_cache: true
+
+- name: Create Directory for project
+  file:
+    path: /opt/porject1
+    state: directory
+
+- name: Print "{{ playbook_dir }}"
+  debug:
+    var: playbook_dir
+
+- name: Sync project files to server
+  ansible.posix.synchronize:
+    src: /builds/milad/ansible-project
+    dest: /opt/project1
+
+- name: Run script.sh or servers
+  shell:
+    cmd: bash /opt/project1/ansible-project/script.sh
+
+- name: Copy index.html to web server directory
+  copy:
+    src: /builds/milad/ansible-project/index.html
+    dest: /var/www/html/index.html
+
+
