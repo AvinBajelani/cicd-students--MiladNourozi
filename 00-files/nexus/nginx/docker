@@ -1,0 +1,36 @@
+server {
+    listen 80;
+    client_max_body_size 1000M;
+    server_name docker.anisa.local;
+    location / {
+        proxy_pass http://localhost:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # uncomment the following lines to use HTTPS
+    # location / {
+    #     return 301 https://$host$request_uri;
+    # }
+}
+
+server {
+    listen 443; # ssl; # uncomment the ssl if you use HTTPS
+    server_name docker.anisa.local;
+
+    # uncomment the following lines to use HTTPS
+    # ssl_certificate /etc/letsencrypt/live/docker.anisa.local/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/docker.anisa.local/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf;
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://localhost:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

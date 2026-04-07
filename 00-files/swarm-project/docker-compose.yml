@@ -1,0 +1,8 @@
+version: "3.8"
+services:
+  docker-app:
+    image: docker.anisa.local/docker-app:latest
+    container_name: docker-app
+    restart: always
+
+

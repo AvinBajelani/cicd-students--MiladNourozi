@@ -1,0 +1,14 @@
+version: "3.4"
+services:
+  nexus:
+    container_name: "nexus_container"
+    hostname: "nexus_container"
+    restart: always
+    image: sonatype/nexus3:3.88.0
+    ports:
+      - '127.0.0.1:8081:8081'
+      - '127.0.0.1:8082:8082'
+    environment:
+      - nexus-webapp-context-path=/nexus
+    volumes:
+    - /data/registry/nexus-data:/nexus-data

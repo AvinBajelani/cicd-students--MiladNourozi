@@ -1,0 +1,35 @@
+server {
+    listen 80;
+    server_name registry.anisa.local;
+    location / {
+        proxy_pass http://localhost:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # uncomment the following lines to use HTTPS
+    # location / {
+    #     return 301 https://$host$request_uri;
+    # }
+}
+
+server {
+    listen 443; # ssl; # uncomment the ssl if you use HTTPS
+    server_name registry.anisa.local;
+
+    # uncomment the following lines to use HTTPS
+    # ssl_certificate /etc/letsencrypt/live/registry.anisa.local/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/registry.anisa.local/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf;
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://localhost:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
