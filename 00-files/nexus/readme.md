@@ -53,10 +53,6 @@ https://registry.anisa.local
 - login to docker registry
 - create repository
 
-![nexus1](../.gitbook/assets/nexus1.png)
-
-![nexus2](../.gitbook/assets/nexus2.png)
-
 ### Login to docker registry in your cli
 
 ```bash
