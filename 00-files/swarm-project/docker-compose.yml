@@ -1,8 +1,13 @@
 version: "3.8"
+
 services:
   docker-app:
-    image: docker.anisa.local/docker-app:latest
-    container_name: docker-app
-    restart: always
-
-
+    image: docker.anisa.local/docker-app:${IMAGE_TAG:-latest}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      update_config:
+        order: start-first
+        failure_action: rollback

@@ -1,44 +1,81 @@
 variables:
   IMAGE_NAME: docker-app
   REGISTRY: docker.anisa.local
+  FULL_IMAGE: $REGISTRY/$IMAGE_NAME
 
 stages:
   - build
   - deploy
+  - verify
 
-
+# ── Build ──────────────────────────────────────────────────────────────────────
 build:
   stage: build
-  image: docker
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
   script:
     - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin $REGISTRY
-    # - docker login -u "$DOCKER_USER" -p "$DOCKER_PASS" $REGISTRY
-    - docker build -t $REGISTRY/$IMAGE_NAME:$CI_PIPELINE_ID .
-    - docker push $REGISTRY/$IMAGE_NAME:$CI_PIPELINE_ID
+    - docker build -t $FULL_IMAGE:$CI_PIPELINE_ID -t $FULL_IMAGE:latest .
+    - docker push $FULL_IMAGE:$CI_PIPELINE_ID
+    - docker push $FULL_IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+# ── Deploy ─────────────────────────────────────────────────────────────────────
 deploy:
   stage: deploy
-  image: docker
-
+  image: docker:27
   before_script:
-    - ls -la
     - mkdir -p ~/.ssh
-    - echo "$DEPLOYER_PRIVATE_KEY" > ~/.ssh/id_rsa
+    # printf avoids the trailing newline that 'echo' adds, which can corrupt the key
+    - printf '%s' "$DEPLOYER_PRIVATE_KEY" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-    - ls -la ~/.ssh
+    - printf 'Host *\n\tStrictHostKeyChecking no\n\tIdentityFile ~/.ssh/id_rsa\n' > ~/.ssh/config
   script:
     - unset DOCKER_HOST
+    # Remove stale context if it exists, then recreate cleanly
+    - docker context rm my-swarm --force 2>/dev/null || true
     - docker context create my-swarm --docker "host=ssh://milad@192.168.122.11"
     - docker context use my-swarm
     - docker node ls
-    - docker stack rm $IMAGE_NAME || true
-    - sleep 1
-    - sed -i "s/latest/$CI_PIPELINE_ID/g" docker-compose.yml
-    - cat docker-compose.yml
-    - docker stack deploy -c docker-compose.yml $IMAGE_NAME
+
+    # Deploy: inject the pipeline ID via an env var instead of mutating the file
+    - IMAGE_TAG=$CI_PIPELINE_ID docker stack deploy
+        --with-registry-auth
+        --compose-file docker-compose.yml
+        $IMAGE_NAME
   needs:
     - job: build
-  retry: 2
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-
+# ── Verify ─────────────────────────────────────────────────────────────────────
+verify:
+  stage: verify
+  image: docker:27
+  before_script:
+    - mkdir -p ~/.ssh
+    - printf '%s' "$DEPLOYER_PRIVATE_KEY" > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - printf 'Host *\n\tStrictHostKeyChecking no\n\tIdentityFile ~/.ssh/id_rsa\n' > ~/.ssh/config
+  script:
+    - unset DOCKER_HOST
+    - docker context rm my-swarm --force 2>/dev/null || true
+    - docker context create my-swarm --docker "host=ssh://milad@192.168.122.11"
+    - docker context use my-swarm
+    # Wait up to 60 s for the service replica to be running
+    - |
+      for i in $(seq 1 12); do
+        RUNNING=$(docker service ls --filter "name=${IMAGE_NAME}_${IMAGE_NAME}" --format "{{.Replicas}}")
+        echo "Replicas: $RUNNING"
+        echo "$RUNNING" | grep -q "^1/1" && echo "Service is up." && exit 0
+        sleep 5
+      done
+      echo "Service did not become healthy in time." && exit 1
+  needs:
+    - job: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
