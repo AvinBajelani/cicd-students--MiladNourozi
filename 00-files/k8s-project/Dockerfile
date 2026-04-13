@@ -7,3 +7,4 @@ COPY . .
 RUN chmod +x loop_script.sh
 
 ENTRYPOINT ["bash", "loop_script.sh"]
+

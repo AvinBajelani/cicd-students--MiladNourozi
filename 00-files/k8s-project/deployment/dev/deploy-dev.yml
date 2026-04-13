@@ -1,0 +1,45 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: monitoring-app
+  namespace: monitoring-app-dev
+  labels:
+    app: monitoring-app
+spec:
+  selector:
+    matchLabels:
+      app: monitoring-app
+  template:
+    metadata:
+      labels:
+        app: monitoring-app
+    spec:
+      hostNetwork: true
+      hostPID: true
+
+      containers:
+        - name: monitoring-app
+          image: 9350733512/monitoring-app:latest
+          imagePullPolicy: Always
+          env:
+            - name: TERM
+              value: xterm-256color
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: false
+
+
+            

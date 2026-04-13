@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: system-monitor
+  namespace: monitoring
+  labels:
+    app: system-monitor
+spec:
+  selector:
+    matchLabels:
+      app: system-monitor
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: system-monitor
+    spec:
+      serviceAccountName: system-monitor
+      terminationGracePeriodSeconds: 5
+
+      # ── Host access ──────────────────────────────────────────────────────
+      # hostPID + hostNetwork let psutil read real node metrics instead of
+      # only the container cgroup view.
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+
+      # ── Security ─────────────────────────────────────────────────────────
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534      # nobody
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: system-monitor
+          image: system-monitor:latest   # replace with your registry image
+          imagePullPolicy: IfNotPresent
+
+          # Load all config values from the ConfigMap
+          envFrom:
+            - configMapRef:
+                name: system-monitor-config
+
+          # Extra env that makes Rich render colours even without a real TTY
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: FORCE_COLOR
+              value: "1"
+
+          # ── Host filesystem mounts ──────────────────────────────────────
+          # Mounting /proc and /sys from the node lets psutil read host-level
+          # CPU, memory, network and disk statistics.
+          volumeMounts:
+            - name: proc
+              mountPath: /proc
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+              add: ["SYS_PTRACE"]   # needed by psutil for per-process stats
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          # stdin/tty must be true so that Rich can render the live display
+          # when you do: kubectl exec -it <pod> -- python app.py
+          stdin: true
+          tty: true
+
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+
+      tolerations:
+        # Run on every node including control-plane nodes
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
